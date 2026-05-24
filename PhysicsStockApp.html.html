@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Master Lab Inventory System</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f4f4f4; }
+        .header { background: #1e3a8a; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .controls { display: flex; gap: 10px; margin-top: 15px; }
+        .table-wrapper { background: white; padding: 20px; margin-bottom: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ccc; padding: 6px; text-align: center; font-size: 11px; }
+        th { background: #1e3a8a; color: white; }
+        input { width: 90%; border: 1px solid #ddd; padding: 5px; text-align: center; }
+        button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; color: white; font-weight: bold; }
+        .add-table { background: #2563eb; }
+        .update-btn { background: #7c3aed; }
+        .export-btn { background: #d97706; }
+        .add-row { background: #059669; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Master Laboratory Inventory</h1>
+    <div id="timestamp">Last Stock Update: Never</div>
+    <div class="controls">
+        <button class="add-table" onclick="createNewTable()">+ Create New Table</button>
+        <button class="update-btn" onclick="performStockTakingUpdate()">🔄 Stock Taking Update</button>
+        <button class="export-btn" onclick="exportAllTables()">📊 Export All to Excel</button>
+    </div>
+</div>
+
+<div id="mainContainer"></div>
+
+<script>
+    let lastUpdateStr = "Never";
+
+    function performStockTakingUpdate() {
+        const now = new Date();
+        lastUpdateStr = now.toLocaleString();
+        document.getElementById('timestamp').innerText = "Last Stock Update: " + lastUpdateStr;
+        
+        // Recalculate all totals
+        document.querySelectorAll('input.qty').forEach(input => calc(input));
+        alert("Stock Taking Update Complete!");
+    }
+
+    function calc(input) {
+        const row = input.parentElement.parentElement;
+        for (let i = 2; i <= 10; i += 4) {
+            const qty = parseFloat(row.cells[i].querySelector('input').value) || 0;
+            const add = parseFloat(row.cells[i+1].querySelector('input').value) || 0;
+            const miss = parseFloat(row.cells[i+2].querySelector('input').value) || 0;
+            row.cells[i+3].querySelector('input').value = (qty + add - miss);
+        }
+    }
+
+    function createNewTable() {
+        const title = prompt("Enter Table Title:", "New Storage Location");
+        if (!title) return;
+        const container = document.getElementById('mainContainer');
+        const div = document.createElement('div');
+        div.className = 'table-wrapper';
+        div.innerHTML = `
+            <h3>${title}</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th rowspan="2">S/N</th><th rowspan="2">NAME</th>
+                        <th colspan="4">4/6/2021</th><th colspan="4">24/5/2022</th><th colspan="4">14/5/2025</th>
+                    </tr>
+                    <tr>
+                        <th>QTY</th><th>ADD</th><th>MISS</th><th>TOT</th>
+                        <th>QTY</th><th>ADD</th><th>MISS</th><th>TOT</th>
+                        <th>QTY</th><th>ADD</th><th>MISS</th><th>TOT</th>
+                    </tr>
+                </thead>
+                <tbody class="tbody">
+                    <tr>${createRowInputs()}</tr>
+                </tbody>
+            </table>
+            <button class="add-row" onclick="addRow(this)">+ Add Row</button>
+        `;
+        container.appendChild(div);
+    }
+
+    function createRowInputs() {
+        let html = `<td><input type="text"></td><td><input type="text"></td>`;
+        for(let i=0; i<3; i++) {
+            html += `<td><input type="number" class="qty" oninput="calc(this)"></td>
+                     <td><input type="number" class="add" oninput="calc(this)"></td>
+                     <td><input type="number" class="miss" oninput="calc(this)"></td>
+                     <td><input type="number" class="tot" readonly style="background:#eee"></td>`;
+        }
+        return html;
+    }
+
+    function addRow(btn) {
+        const tbody = btn.parentElement.querySelector('.tbody');
+        const row = document.createElement('tr');
+        row.innerHTML = createRowInputs();
+        tbody.appendChild(row);
+    }
+
+    function exportAllTables() {
+        let csv = `REPORT GENERATED AT,${lastUpdateStr}\n\n`;
+        csv += "TABLE,S/N,NAME,2021-QTY,2021-ADD,2021-MISS,2021-TOT,2022-QTY,2022-ADD,2022-MISS,2022-TOT,2025-QTY,2025-ADD,2025-MISS,2025-TOT\n";
+        
+        document.querySelectorAll('.table-wrapper').forEach(wrapper => {
+            const title = wrapper.querySelector('h3').innerText;
+            wrapper.querySelectorAll('tbody tr').forEach(row => {
+                const vals = Array.from(row.querySelectorAll('input')).map(i => i.value);
+                csv += `${title},${vals.join(",")}\n`;
+            });
+        });
+        
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = "Lab_Inventory_Report.csv";
+        a.click();
+    }
+</script>
+</body>
+</html>

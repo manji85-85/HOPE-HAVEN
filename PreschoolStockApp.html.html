@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Flexible School Inventory</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f4f4f4; }
+        .header { background: #1e3a8a; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .controls { display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap; }
+        .table-wrapper { background: white; padding: 20px; margin-bottom: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ccc; padding: 4px; text-align: center; font-size: 11px; }
+        th { background: #1e3a8a; color: white; }
+        /* Style for editable header inputs */
+        th input { width: 90%; background: #1e3a8a; color: white; border: none; font-weight: bold; text-align: center; }
+        input { width: 90%; border: 1px solid #eee; padding: 3px; text-align: center; }
+        .tot { background: #e0e7ff; font-weight: bold; }
+        button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; color: white; font-weight: bold; }
+        .btn-add-class { background: #2563eb; }
+        .btn-update { background: #7c3aed; }
+        .btn-export { background: #d97706; }
+        .btn-add-row { background: #059669; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Flexible School Inventory</h1>
+    <div id="timestamp">Last Stock Update: Never</div>
+    <div class="controls">
+        <button class="btn-add-class" onclick="addClass()">+ Add New Class</button>
+        <button class="btn-update" onclick="updateStock()">🔄 Stock Taking Update</button>
+        <button class="btn-export" onclick="exportExcel()">📊 Export All to Excel</button>
+    </div>
+</div>
+
+<div id="mainContainer"></div>
+
+<script>
+    function addClass() {
+        const className = prompt("Enter Name of New Class/Location:");
+        if (!className) return;
+
+        const container = document.getElementById('mainContainer');
+        const div = document.createElement('div');
+        div.className = 'table-wrapper';
+        div.innerHTML = `
+            <h3>${className}</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th rowspan="2">S/N</th><th rowspan="2">ITEM</th>
+                        <th colspan="4"><input type="text" value="Period 1"></th>
+                        <th colspan="4"><input type="text" value="Period 2"></th>
+                        <th colspan="4"><input type="text" value="Period 3"></th>
+                        <th colspan="4"><input type="text" value="Period 4"></th>
+                    </tr>
+                    <tr>
+                        <th>QTY</th><th>ADD</th><th>MISS</th><th>TOT</th>
+                        <th>QTY</th><th>ADD</th><th>MISS</th><th>TOT</th>
+                        <th>QTY</th><th>ADD</th><th>MISS</th><th>TOT</th>
+                        <th>QTY</th><th>ADD</th><th>MISS</th><th>TOT</th>
+                    </tr>
+                </thead>
+                <tbody class="tbody"></tbody>
+            </table>
+            <button class="btn-add-row" onclick="addRow(this)">+ Add Row</button>
+        `;
+        container.appendChild(div);
+        addRow(div.querySelector('.btn-add-row'));
+    }
+
+    function addRow(btn) {
+        const tbody = btn.parentElement.querySelector('.tbody');
+        const row = document.createElement('tr');
+        const count = tbody.querySelectorAll('tr').length + 1;
+        
+        let html = `<td>${count}</td><td><input type="text" placeholder="Item"></td>`;
+        for(let i = 0; i < 4; i++) {
+            html += `
+                <td><input type="number" class="p${i}-qty" oninput="calc(this, ${i})" value="0"></td>
+                <td><input type="number" class="p${i}-add" oninput="calc(this, ${i})" value="0"></td>
+                <td><input type="number" class="p${i}-miss" oninput="calc(this, ${i})" value="0"></td>
+                <td><input type="number" class="p${i}-tot tot" readonly value="0"></td>
+            `;
+        }
+        row.innerHTML = html;
+        tbody.appendChild(row);
+    }
+
+    function calc(input, pIndex) {
+        const row = input.parentElement.parentElement;
+        const qty = parseFloat(row.querySelector(`.p${pIndex}-qty`).value) || 0;
+        const add = parseFloat(row.querySelector(`.p${pIndex}-add`).value) || 0;
+        const miss = parseFloat(row.querySelector(`.p${pIndex}-miss`).value) || 0;
+        row.querySelector(`.p${pIndex}-tot`).value = (qty + add - miss);
+    }
+
+    function updateStock() {
+        const now = new Date();
+        document.getElementById('timestamp').innerText = "Last Stock Update: " + now.toLocaleString();
+        alert("Arithmetic calculated and update timestamp saved.");
+    }
+
+    function exportExcel() {
+        let csv = "CLASS,ITEM,P1-NAME,P1-QTY,P1-ADD,P1-MISS,P1-TOT,P2-NAME,P2-QTY,P2-ADD,P2-MISS,P2-TOT,P3-NAME,P3-QTY,P3-ADD,P3-MISS,P3-TOT,P4-NAME,P4-QTY,P4-ADD,P4-MISS,P4-TOT,UPDATE_TIME\n";
+        let time = document.getElementById('timestamp').innerText;
+        
+        document.querySelectorAll('.table-wrapper').forEach(wrapper => {
+            let className = wrapper.querySelector('h3').innerText;
+            // Get custom period names
+            let periodNames = Array.from(wrapper.querySelectorAll('th input')).map(i => i.value);
+            
+            wrapper.querySelectorAll('tbody tr').forEach(row => {
+                let inputs = Array.from(row.querySelectorAll('input')).map(i => i.value);
+                // Interleave period names with row data
+                let rowData = [inputs[0], periodNames[0], inputs[1], inputs[2], inputs[3], inputs[4], periodNames[1], inputs[5], inputs[6], inputs[7], inputs[8], periodNames[2], inputs[9], inputs[10], inputs[11], inputs[12], periodNames[3], inputs[13], inputs[14], inputs[15], inputs[16]];
+                csv += `${className},${rowData.join(",")},${time}\n`;
+            });
+        });
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = "Custom_Inventory_Report.csv";
+        a.click();
+    }
+</script>
+</body>
+</html>
